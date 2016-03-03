@@ -11,8 +11,24 @@ class MoviesController < ApplicationController
   end
 
   def index
-    @movies = Movie.all
+    @order_by = params[:order_by] || session[:order_by]
+    @selected_ratings = params[:ratings] || session[:ratings] || {}
+    @all_ratings = Movie.uniq.pluck(:rating).select {|r| !(r.nil? or r.blank?)}
+    if @selected_ratings == {}
+      @selected_ratings = Hash[@all_ratings.map {|rating| [rating, rating]}]
+    end
+    if params[:order_by] != session[:order_by] or params[:ratings] != session[:ratings]
+      session[:order_by] = @order_by
+      session[:ratings] = @selected_ratings
+      flash.keep
+      redirect_to movies_path(ratings: @selected_ratings,
+                              order_by: @order_by) and return
+    end
+    ordering = {@order_by => :asc} if @order_by and !@order_by.blank?
+    @movies = Movie.where(rating: @selected_ratings.keys).order(ordering)
   end
+
+
 
   def new
     # default: render 'new' template
